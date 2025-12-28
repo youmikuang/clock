@@ -49,6 +49,13 @@ watch([timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, fontW
 
 export function getCurrentTheme() {
   if (themeMode.value === 'auto') {
+    // 优先检测系统主题偏好
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark'
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      return 'light'
+    }
+    // 如果无法检测系统偏好，则根据时间判断
     const hour = new Date().getHours()
     return (hour >= 6 && hour < 18) ? 'light' : 'dark'
   }

@@ -31,7 +31,7 @@ watch(themeMode, () => {
 })
 
 function applyTheme() {
-  document.body.dataset.theme = getCurrentTheme()
+  document.documentElement.dataset.theme = getCurrentTheme()
 }
 
 // 闹钟检查
@@ -231,7 +231,7 @@ function handleKeydown(e) {
   --shadow: rgba(0, 0, 0, 0.1);
 }
 
-[data-theme="dark"] {
+:root[data-theme="dark"] {
   --bg-color: #000000;
   --text-color: #ffffff;
   --sidebar-bg: #111111;
