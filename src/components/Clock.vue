@@ -7,46 +7,29 @@ let intervalId = null
 let syncIntervalId = null
 const timeOffset = ref(0) // 网络时间与本地时间的偏移量（毫秒）
 
-// 时间 API 列表（按优先级排序）
-const TIME_APIS = [
-  {
-    name: '苏宁',
-    url: 'https://quan.suning.com/getSysTime.do',
-    parse: (data) => new Date(data.sysTime2).getTime()
-  },
-  {
-    name: '淘宝',
-    url: 'https://api.m.taobao.com/rest/api3.do?api=mtop.common.getTimestamp',
-    parse: (data) => Number(data.data.t)
-  },
-  {
-    name: 'TimeAPI.io',
-    url: 'https://timeapi.io/api/Time/current/zone?timeZone=Asia/Shanghai',
-    parse: (data) => new Date(data.dateTime).getTime()
-  }
-]
-
 // 获取网络时间并计算偏移量
 async function syncNetworkTime() {
-  for (const api of TIME_APIS) {
-    try {
-      const beforeRequest = Date.now()
-      const response = await fetch(api.url, { cache: 'no-store' })
-      const afterRequest = Date.now()
+  try {
+    const beforeRequest = Date.now()
+    // 请求当前站点获取服务器时间（通过 HTTP Date 响应头）
+    const response = await fetch(window.location.origin + '/favicon.ico?' + Date.now(), {
+      method: 'HEAD',
+      cache: 'no-store'
+    })
+    const afterRequest = Date.now()
 
-      if (response.ok) {
-        const data = await response.json()
-        const networkTime = api.parse(data)
-        const localTime = (beforeRequest + afterRequest) / 2
-        timeOffset.value = networkTime - localTime
-        console.log(`时间同步成功 [${api.name}]，偏移量: ${timeOffset.value}ms`)
-        return
-      }
-    } catch (error) {
-      console.warn(`${api.name} 同步失败:`, error.message)
+    const dateHeader = response.headers.get('Date')
+    if (dateHeader) {
+      const networkTime = new Date(dateHeader).getTime()
+      const localTime = (beforeRequest + afterRequest) / 2
+      timeOffset.value = networkTime - localTime
+      console.log(`时间同步成功，偏移量: ${timeOffset.value}ms`)
+      return
     }
+  } catch (error) {
+    console.warn('时间同步失败:', error.message)
   }
-  console.warn('所有时间同步方式均失败，使用本地时间')
+  console.warn('时间同步失败，使用本地时间')
 }
 
 // 获取校正后的当前时间
