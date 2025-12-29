@@ -22,7 +22,7 @@ const timeDisplay = computed(() => {
   const minutes = now.value.getMinutes()
   const seconds = now.value.getSeconds()
 
-  if (timeFormat.value === 12) {
+  if (Number(timeFormat.value) === 12) {
     hours = hours % 12 || 12
   }
 
@@ -34,7 +34,7 @@ const timeDisplay = computed(() => {
 })
 
 const ampm = computed(() => {
-  if (timeFormat.value !== 12) return ''
+  if (Number(timeFormat.value) !== 12) return ''
   return now.value.getHours() >= 12 ? '下午' : '上午'
 })
 

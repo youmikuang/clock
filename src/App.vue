@@ -75,27 +75,76 @@ function handleTimerComplete() {
   playAlarmSound()
 }
 
-// 全屏功能 - 仅放大显示区域
+// 检测是否为 iOS 设备（iPad/iPhone）
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+// 进入/退出模拟全屏时的处理
+function enterSimulatedFullscreen() {
+  isFullscreen.value = true
+  sidebarCollapsed.value = true
+  document.body.classList.add('fullscreen-mode')
+  // 滚动到顶部，隐藏 Safari 地址栏
+  window.scrollTo(0, 1)
+}
+
+function exitSimulatedFullscreen() {
+  isFullscreen.value = false
+  document.body.classList.remove('fullscreen-mode')
+}
+
+// 全屏功能 - 兼容 iPad
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    const mainContent = mainContentRef.value
-    if (mainContent) {
-      mainContent.requestFullscreen().then(() => {
+  const mainContent = mainContentRef.value
+  if (!mainContent) return
+
+  // iOS 设备使用 CSS 模拟全屏（iOS Safari 不支持 Fullscreen API）
+  if (isIOS) {
+    if (isFullscreen.value) {
+      exitSimulatedFullscreen()
+    } else {
+      enterSimulatedFullscreen()
+    }
+    return
+  }
+
+  // 获取当前全屏元素（兼容不同浏览器）
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+
+  if (!fullscreenElement) {
+    // 进入全屏
+    const requestFullscreen = mainContent.requestFullscreen || mainContent.webkitRequestFullscreen
+    if (requestFullscreen) {
+      requestFullscreen.call(mainContent).then(() => {
         isFullscreen.value = true
       }).catch(err => {
-        console.log('全屏请求失败:', err)
+        // 如果原生全屏失败，使用 CSS 模拟
+        console.log('全屏请求失败，使用模拟全屏:', err)
+        enterSimulatedFullscreen()
       })
+    } else {
+      // 不支持全屏 API，使用 CSS 模拟
+      enterSimulatedFullscreen()
     }
   } else {
-    document.exitFullscreen().then(() => {
+    // 退出全屏
+    const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen
+    if (exitFullscreen) {
+      exitFullscreen.call(document).then(() => {
+        isFullscreen.value = false
+      }).catch(() => {
+        isFullscreen.value = false
+      })
+    } else {
       isFullscreen.value = false
-    })
+    }
   }
 }
 
-// 监听全屏变化
+// 监听全屏变化（兼容 webkit 前缀）
 function handleFullscreenChange() {
-  isFullscreen.value = !!document.fullscreenElement
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+  isFullscreen.value = !!fullscreenElement
 }
 
 // 字体大小调节
@@ -131,6 +180,7 @@ onMounted(() => {
   // 键盘快捷键
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
 })
 
 onUnmounted(() => {
@@ -138,6 +188,7 @@ onUnmounted(() => {
   if (themeCheckInterval) clearInterval(themeCheckInterval)
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
 })
 
 function handleKeydown(e) {
@@ -275,9 +326,36 @@ body {
 }
 
 .main-content.is-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   margin-left: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* 动态视口高度，适配 iOS Safari */
+  height: -webkit-fill-available;
+  z-index: 9999;
+  /* 安全区域内边距，适配刘海屏 */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* iPad/iOS 全屏模式下的 body 样式 */
+body.fullscreen-mode {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* 全屏模式下隐藏侧边栏切换按钮 */
+body.fullscreen-mode .sidebar-toggle {
+  display: none !important;
 }
 
 .control-buttons {
@@ -287,6 +365,11 @@ body {
   display: flex;
   gap: 8px;
   z-index: 100;
+}
+
+.is-fullscreen .control-buttons {
+  top: 20px;
+  right: 20px;
 }
 
 .control-btn {
