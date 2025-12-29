@@ -12,7 +12,7 @@ async function syncNetworkTime() {
   try {
     const beforeRequest = Date.now()
     // 请求当前站点获取服务器时间（通过 HTTP Date 响应头）
-    const response = await fetch(window.location.origin + '/favicon.ico?' + Date.now(), {
+    const response = await fetch(window.location.origin + '/favicon.svg?' + Date.now(), {
       method: 'HEAD',
       cache: 'no-store'
     })
