@@ -33,11 +33,6 @@ const timeDisplay = computed(() => {
   return { hours: h, minutes: m, seconds: s }
 })
 
-const ampm = computed(() => {
-  if (Number(timeFormat.value) !== 12) return ''
-  return now.value.getHours() >= 12 ? '下午' : '上午'
-})
-
 const dateDisplay = computed(() => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
   return now.value.toLocaleDateString('zh-CN', options)
@@ -58,7 +53,7 @@ const clockStyle = computed(() => {
 <template>
   <div class="clock-container">
     <div class="time-display" :style="clockStyle">
-      {{ timeDisplay.hours }}:{{ timeDisplay.minutes }}<template v-if="showSeconds">:{{ timeDisplay.seconds }}</template><span v-if="ampm" class="ampm">{{ ampm }}</span>
+      {{ timeDisplay.hours }}:{{ timeDisplay.minutes }}<template v-if="showSeconds">:{{ timeDisplay.seconds }}</template>
     </div>
     <div v-if="showDate" class="date-display">
       {{ dateDisplay }}
@@ -79,13 +74,6 @@ const clockStyle = computed(() => {
   font-variant-numeric: tabular-nums;
   line-height: 1;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-}
-
-.time-display .ampm {
-  font-size: 0.2em;
-  margin-left: 15px;
-  opacity: 0.8;
-  vertical-align: super;
 }
 
 .date-display {
