@@ -8,16 +8,23 @@ const laps = ref([])
 let intervalId = null
 let startTime = 0
 
-const displayStyle = computed(() => ({
-  fontSize: `${fontSize.value * 1.2}px`,
-  fontWeight: fontWeight.value,
-  color: clockColor.value === 'default' ? 'var(--text-color)' : clockColor.value
-}))
+const displayStyle = computed(() => {
+  const baseSize = fontSize.value
+  return {
+    fontSize: `clamp(${baseSize * 0.8}px, ${baseSize * 0.2}vw, ${baseSize * 2}px)`,
+    fontWeight: fontWeight.value,
+    color: clockColor.value === 'default' ? 'var(--text-color)' : clockColor.value
+  }
+})
 
 const displayTime = computed(() => {
   const totalMs = elapsed.value
-  const minutes = Math.floor(totalMs / 60000)
+  const hours = Math.floor(totalMs / 3600000)
+  const minutes = Math.floor((totalMs % 3600000) / 60000)
   const seconds = Math.floor((totalMs % 60000) / 1000)
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 })
 
@@ -72,9 +79,13 @@ function recordLap() {
 }
 
 function formatLapTime(time) {
-  const minutes = Math.floor(time / 60000)
+  const hours = Math.floor(time / 3600000)
+  const minutes = Math.floor((time % 3600000) / 60000)
   const seconds = Math.floor((time % 60000) / 1000)
   const ms = Math.floor((time % 1000) / 10)
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`
+  }
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`
 }
 
@@ -87,8 +98,6 @@ onUnmounted(() => {
 
 <template>
   <div class="stopwatch-panel">
-    <h2 class="panel-title">秒表</h2>
-
     <div class="stopwatch-display" :style="displayStyle">
       <span class="main-time">{{ displayTime }}</span><span class="ms-time">{{ displayMs }}</span>
     </div>
@@ -136,18 +145,39 @@ onUnmounted(() => {
 }
 
 .lap-list {
-  max-height: 200px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 250px;
   overflow-y: auto;
   margin: 20px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.lap-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.lap-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lap-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
 .lap-item {
   display: flex;
   justify-content: space-between;
-  padding: 10px 15px;
+  align-items: center;
+  padding: 12px 20px;
   background: var(--sidebar-bg);
-  border-radius: 8px;
-  margin-bottom: 5px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Mono', monospace;
 }
 
 .stopwatch-controls {

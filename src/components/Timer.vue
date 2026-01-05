@@ -13,11 +13,14 @@ const running = ref(false)
 const showInputs = ref(true)
 let intervalId = null
 
-const displayStyle = computed(() => ({
-  fontSize: `${fontSize.value * 1.2}px`,
-  fontWeight: fontWeight.value,
-  color: clockColor.value === 'default' ? 'var(--text-color)' : clockColor.value
-}))
+const displayStyle = computed(() => {
+  const baseSize = fontSize.value
+  return {
+    fontSize: `clamp(${baseSize * 0.8}px, ${baseSize * 0.2}vw, ${baseSize * 2}px)`,
+    fontWeight: fontWeight.value,
+    color: clockColor.value === 'default' ? 'var(--text-color)' : clockColor.value
+  }
+})
 
 const presets = [
   { label: '1分钟', minutes: 1 },
@@ -92,6 +95,19 @@ function resetTimer() {
   showInputs.value = true
 }
 
+// 滚轮调整时间
+function handleWheel(e, field, min, max) {
+  e.preventDefault()
+  const delta = e.deltaY < 0 ? 1 : -1
+  const refs = { hours, minutes, seconds }
+  const ref = refs[field]
+  let newValue = ref.value + delta
+  // 循环滚动
+  if (newValue > max) newValue = min
+  if (newValue < min) newValue = max
+  ref.value = newValue
+}
+
 function timerComplete() {
   resetTimer()
   emit('timerComplete')
@@ -106,8 +122,6 @@ onUnmounted(() => {
 
 <template>
   <div class="timer-panel">
-    <h2 class="panel-title">计时器</h2>
-
     <div class="timer-display" :style="displayStyle">{{ displayTime }}</div>
 
     <div v-if="showInputs" class="timer-inputs">
@@ -118,6 +132,7 @@ onUnmounted(() => {
           min="0"
           max="99"
           placeholder="00"
+          @wheel="handleWheel($event, 'hours', 0, 99)"
         >
         <label>时</label>
       </div>
@@ -128,6 +143,7 @@ onUnmounted(() => {
           min="0"
           max="59"
           placeholder="00"
+          @wheel="handleWheel($event, 'minutes', 0, 59)"
         >
         <label>分</label>
       </div>
@@ -138,6 +154,7 @@ onUnmounted(() => {
           min="0"
           max="59"
           placeholder="00"
+          @wheel="handleWheel($event, 'seconds', 0, 59)"
         >
         <label>秒</label>
       </div>

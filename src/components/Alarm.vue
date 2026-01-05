@@ -44,12 +44,22 @@ function saveAlarm() {
 function formatTime(hour, minute) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
 }
+
+// 滚轮调整时间
+function handleWheel(e, field, min, max) {
+  e.preventDefault()
+  const delta = e.deltaY < 0 ? 1 : -1
+  const current = alarmForm.value[field]
+  let newValue = current + delta
+  // 循环滚动
+  if (newValue > max) newValue = min
+  if (newValue < min) newValue = max
+  alarmForm.value[field] = newValue
+}
 </script>
 
 <template>
   <div class="alarm-panel">
-    <h2 class="panel-title">闹钟</h2>
-
     <div class="alarm-list">
       <p v-if="alarms.length === 0" class="empty-text">暂无闹钟</p>
 
@@ -85,6 +95,7 @@ function formatTime(hour, minute) {
               min="0"
               max="23"
               placeholder="时"
+              @wheel="handleWheel($event, 'hour', 0, 23)"
             >
             <span class="time-separator">:</span>
             <input
@@ -93,6 +104,7 @@ function formatTime(hour, minute) {
               min="0"
               max="59"
               placeholder="分"
+              @wheel="handleWheel($event, 'minute', 0, 59)"
             >
           </div>
         </div>
@@ -135,15 +147,38 @@ function formatTime(hour, minute) {
 }
 
 .panel-title {
-  font-size: 24px;
+  font-size: 48px;
   margin-bottom: 20px;
   text-align: center;
 }
 
 .alarm-list {
-  max-height: 300px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 500px;
+  min-height: 400px;
   overflow-y: auto;
   margin-bottom: 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+/* Webkit 浏览器滚动条样式 */
+.alarm-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.alarm-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.alarm-list::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.alarm-list::-webkit-scrollbar-thumb:hover {
+  background: var(--sidebar-hover);
 }
 
 .empty-text {

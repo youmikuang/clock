@@ -11,7 +11,17 @@ import { themeMode, getCurrentTheme, fontSize, fontWeight } from './stores/setti
 import { alarms } from './stores/alarms'
 import { useAudio } from './composables/useAudio'
 
-const currentView = ref('clock')
+// 有效的视图列表（不包含 clock，因为 clock 用 / 表示）
+const validViews = ['alarm', 'timer', 'stopwatch', 'settings']
+
+// 从 URL 路径获取初始视图
+function getViewFromPath() {
+  const path = window.location.pathname.slice(1) // 去掉开头的 /
+  if (path === '' || path === 'clock') return 'clock'
+  return validViews.includes(path) ? path : 'clock'
+}
+
+const currentView = ref(getViewFromPath())
 const sidebarCollapsed = ref(false)
 const mainContentRef = ref(null)
 const isFullscreen = ref(false)
@@ -29,6 +39,19 @@ const currentTheme = computed(() => getCurrentTheme())
 watch(themeMode, () => {
   applyTheme()
 })
+
+// 监听视图变化，更新 URL 路径
+watch(currentView, (newView) => {
+  const newPath = newView === 'clock' ? '/' : `/${newView}`
+  if (window.location.pathname !== newPath) {
+    window.history.pushState({}, '', newPath)
+  }
+})
+
+// 处理浏览器前进/后退
+function handlePopState() {
+  currentView.value = getViewFromPath()
+}
 
 function applyTheme() {
   document.documentElement.dataset.theme = getCurrentTheme()
@@ -181,6 +204,8 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+  // 监听浏览器前进/后退
+  window.addEventListener('popstate', handlePopState)
 })
 
 onUnmounted(() => {
@@ -189,6 +214,7 @@ onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  window.removeEventListener('popstate', handlePopState)
 })
 
 function handleKeydown(e) {
@@ -250,15 +276,15 @@ function handleKeydown(e) {
           </svg>
         </button>
       </div>
-    </main>
 
-    <!-- 闹钟提醒 -->
-    <AlarmAlert
-      :show="showAlarmAlert"
-      :time="alertTime"
-      :label="alertLabel"
-      @dismiss="dismissAlarm"
-    />
+      <!-- 闹钟提醒 - 放在全屏容器内部以确保全屏时也能显示 -->
+      <AlarmAlert
+        :show="showAlarmAlert"
+        :time="alertTime"
+        :label="alertLabel"
+        @dismiss="dismissAlarm"
+      />
+    </main>
   </div>
 </template>
 
