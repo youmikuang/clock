@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { themeMode, getCurrentTheme } from '../stores/settings'
 
 const props = defineProps({
@@ -34,6 +34,81 @@ function toggleSidebar() {
 
 function toggleTheme() {
   themeMode.value = themeMode.value === 'dark' ? 'light' : 'dark'
+}
+
+function handleThemeToggle(e) {
+  const isAppearanceTransition =
+    typeof document !== 'undefined' &&
+    !!document.startViewTransition &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (!isAppearanceTransition) {
+    toggleTheme()
+    return
+  }
+
+  const x = e.clientX
+  const y = e.clientY
+  const endRadius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+
+  const disableTransitionsStyle = document.createElement('style')
+  disableTransitionsStyle.textContent = `
+    *, *::before, *::after {
+      -webkit-transition: none !important;
+      -moz-transition: none !important;
+      -o-transition: none !important;
+      transition: none !important;
+    }
+  `
+  document.head.appendChild(disableTransitionsStyle)
+
+  const viewTransitionStyle = document.createElement('style')
+  viewTransitionStyle.textContent = `
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none !important;
+      mix-blend-mode: normal;
+    }
+  `
+  document.head.appendChild(viewTransitionStyle)
+
+  const transition = document.startViewTransition(async () => {
+    toggleTheme()
+    await nextTick()
+  })
+
+  transition.ready.then(() => {
+    const isDarkNow = getCurrentTheme() === 'dark'
+
+    const zIndexStyle = document.createElement('style')
+    zIndexStyle.textContent = `
+      ::view-transition-old(root) { z-index: ${isDarkNow ? 1 : 9999}; }
+      ::view-transition-new(root) { z-index: ${isDarkNow ? 9999 : 1}; }
+    `
+    document.head.appendChild(zIndexStyle)
+
+    const clipPath = [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`]
+
+    const animation = document.documentElement.animate(
+      {
+        clipPath: isDarkNow ? clipPath : [...clipPath].reverse(),
+      },
+      {
+        duration: 300,
+        easing: 'ease-in-out',
+        pseudoElement: isDarkNow ? '::view-transition-new(root)' : '::view-transition-old(root)',
+      },
+    )
+
+    animation.finished.then(() => {
+      zIndexStyle.remove()
+    })
+  })
+
+  transition.finished.then(() => {
+    disableTransitionsStyle.remove()
+    viewTransitionStyle.remove()
+  })
 }
 </script>
 
@@ -71,7 +146,7 @@ function toggleTheme() {
       <button
         class="nav-item theme-toggle-btn"
         :title="isDark ? '切换到白天模式' : '切换到黑夜模式'"
-        @click="toggleTheme"
+        @click="handleThemeToggle"
       >
         <!-- 太阳图标（白天模式） -->
         <svg v-if="!isDark" viewBox="0 0 24 24" fill="currentColor">
