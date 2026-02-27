@@ -185,7 +185,7 @@ function decreaseFontSize() {
 
 // 字体粗细切换
 function toggleFontWeight() {
-  fontWeight.value = fontWeight.value === 100 ? 400 : 100
+  fontWeight.value = fontWeight.value === 100 ? 250 : 100
 }
 
 // 自动主题检查
