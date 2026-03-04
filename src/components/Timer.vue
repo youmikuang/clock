@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { fontSize, fontWeight, clockColor } from '../stores/settings'
 
 const emit = defineEmits(['timerComplete'])
@@ -12,6 +12,7 @@ const remaining = ref(0)
 const running = ref(false)
 const showInputs = ref(true)
 let intervalId = null
+let endTime = 0
 
 const displayStyle = computed(() => {
   const baseSize = fontSize.value
@@ -59,6 +60,17 @@ function toggleTimer() {
   }
 }
 
+function tick() {
+  const now = Date.now()
+  const left = Math.round((endTime - now) / 1000)
+  if (left <= 0) {
+    remaining.value = 0
+    timerComplete()
+  } else {
+    remaining.value = left
+  }
+}
+
 function startTimer() {
   if (remaining.value === 0) {
     remaining.value =
@@ -72,13 +84,9 @@ function startTimer() {
   running.value = true
   showInputs.value = false
 
-  intervalId = setInterval(() => {
-    remaining.value--
+  endTime = Date.now() + remaining.value * 1000
 
-    if (remaining.value <= 0) {
-      timerComplete()
-    }
-  }, 1000)
+  intervalId = setInterval(tick, 1000)
 }
 
 function pauseTimer() {
@@ -113,10 +121,21 @@ function timerComplete() {
   emit('timerComplete')
 }
 
+function handleVisibilityChange() {
+  if (!document.hidden && running.value) {
+    tick()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
 onUnmounted(() => {
   if (intervalId) {
     clearInterval(intervalId)
   }
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
