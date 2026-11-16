@@ -143,9 +143,8 @@ function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
 }
 
-// 生成包含当前配置的链接（可直接分享）
-export function buildShareUrl() {
-  const url = new URL(window.location.href)
+// 生成当前配置对应的查询字符串
+function buildSettingsSearch() {
   const params = new URLSearchParams()
   params.set('timeFormat', String(timeFormat.value))
   params.set('showSeconds', String(showSeconds.value))
@@ -156,18 +155,24 @@ export function buildShareUrl() {
   params.set('fontWeight', String(fontWeight.value))
   params.set('fullscreen', String(isFullscreen.value))
   params.set('cbs', String(showControls.value))
-  url.search = params.toString()
+  return params.toString()
+}
+
+// 生成包含当前配置的链接（可直接分享，始终指向源站根地址）
+export function buildShareUrl() {
+  const url = new URL('/', window.location.origin)
+  url.search = buildSettingsSearch()
   return url.toString()
 }
 
-// 当 URL 中带有配置时，保持地址栏与当前配置一致
+// 当 URL 中带有配置时，保持地址栏与当前配置一致（保留当前路径）
 function syncSettingsToUrl() {
-  const next = new URL(buildShareUrl())
-  if (window.location.search === next.search) return
+  const search = `?${buildSettingsSearch()}`
+  if (window.location.search === search) return
   window.history.replaceState(
     window.history.state,
     '',
-    `${next.pathname}${next.search}${next.hash}`
+    `${window.location.pathname}${search}${window.location.hash}`
   )
 }
 
