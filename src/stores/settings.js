@@ -10,8 +10,6 @@ export const defaultSettings = {
   clockColor: '#f39c12',
   fontSize: 100,
   fontWeight: 100,
-  // 是否显示右上角控制按钮（可全屏、字体粗细、缩放）
-  showControls: true,
   // 界面状态（仅保存在本地，不参与 URL 配置）
   sidebarCollapsed: false
 }
@@ -33,10 +31,7 @@ const URL_PARAM_ALIASES = {
   fontWeight: 'fontWeight',
   weight: 'fontWeight',
   fullscreen: 'fullscreen',
-  fs: 'fullscreen',
-  cbs: 'showControls',
-  showControls: 'showControls',
-  controls: 'showControls'
+  fs: 'fullscreen'
 }
 
 function clampNumber(value, min, max) {
@@ -64,7 +59,6 @@ function normalizeValue(key, raw) {
     case 'showSeconds':
     case 'showDate':
     case 'fullscreen':
-    case 'showControls':
       return parseBoolean(raw)
     case 'themeMode': {
       const value = String(raw).trim().toLowerCase()
@@ -122,7 +116,6 @@ export const themeMode = ref(initialSettings.themeMode)
 export const clockColor = ref(initialSettings.clockColor)
 export const fontSize = ref(initialSettings.fontSize)
 export const fontWeight = ref(initialSettings.fontWeight)
-export const showControls = ref(initialSettings.showControls !== false)
 export const sidebarCollapsed = ref(!!initialSettings.sidebarCollapsed)
 // 全屏是临时界面状态：不写入 localStorage，仅支持通过 URL 参数指定
 export const isFullscreen = ref(!!initialSettings.fullscreen)
@@ -137,7 +130,6 @@ function saveSettings() {
     clockColor: clockColor.value,
     fontSize: fontSize.value,
     fontWeight: fontWeight.value,
-    showControls: showControls.value,
     sidebarCollapsed: sidebarCollapsed.value
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
@@ -154,7 +146,6 @@ function buildSettingsSearch() {
   params.set('fontSize', String(fontSize.value))
   params.set('fontWeight', String(fontWeight.value))
   params.set('fullscreen', String(isFullscreen.value))
-  params.set('cbs', String(showControls.value))
   return params.toString()
 }
 
@@ -177,11 +168,11 @@ function syncSettingsToUrl() {
 }
 
 // 监听所有设置变化
-watch([timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, fontWeight, showControls, sidebarCollapsed], saveSettings)
+watch([timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, fontWeight, sidebarCollapsed], saveSettings)
 
 if (settingsFromUrl) {
   watch(
-    [timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, fontWeight, showControls, isFullscreen],
+    [timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, fontWeight, isFullscreen],
     syncSettingsToUrl
   )
 }

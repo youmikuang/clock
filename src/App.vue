@@ -7,7 +7,7 @@ import Timer from './components/Timer.vue'
 import Stopwatch from './components/Stopwatch.vue'
 import Settings from './components/Settings.vue'
 import AlarmAlert from './components/AlarmAlert.vue'
-import { themeMode, getCurrentTheme, fontSize, fontWeight, sidebarCollapsed, isFullscreen, showControls } from './stores/settings'
+import { themeMode, getCurrentTheme, fontSize, fontWeight, sidebarCollapsed, isFullscreen } from './stores/settings'
 import { alarms } from './stores/alarms'
 import { useAudio } from './composables/useAudio'
 
@@ -204,6 +204,25 @@ function setSidebarCollapsed(value) {
   sidebarCollapsed.value = value
 }
 
+// 右上角控制按钮：鼠标静止 3s 后隐藏，鼠标移动/悬停时重新显示
+const CONTROLS_HIDE_DELAY = 3000
+const controlsVisible = ref(true)
+let controlsHideTimer = null
+
+function hideControls() {
+  controlsVisible.value = false
+}
+
+function scheduleControlsHide() {
+  if (controlsHideTimer) clearTimeout(controlsHideTimer)
+  controlsHideTimer = setTimeout(hideControls, CONTROLS_HIDE_DELAY)
+}
+
+function handleUserActivity() {
+  controlsVisible.value = true
+  scheduleControlsHide()
+}
+
 // 自动主题检查
 let themeCheckInterval = null
 
@@ -214,6 +233,11 @@ onMounted(() => {
   if (isFullscreen.value) {
     toggleFullscreen()
   }
+
+  // 控制按钮初始 3s 后自动隐藏
+  scheduleControlsHide()
+  document.addEventListener('mousemove', handleUserActivity)
+  document.addEventListener('touchstart', handleUserActivity, { passive: true })
 
   alarmCheckInterval = setInterval(checkAlarms, 1000)
   themeCheckInterval = setInterval(() => {
@@ -233,6 +257,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (alarmCheckInterval) clearInterval(alarmCheckInterval)
   if (themeCheckInterval) clearInterval(themeCheckInterval)
+  if (controlsHideTimer) clearTimeout(controlsHideTimer)
+  document.removeEventListener('mousemove', handleUserActivity)
+  document.removeEventListener('touchstart', handleUserActivity)
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
@@ -284,8 +311,12 @@ function handleKeydown(e) {
         @toggle-fullscreen="toggleFullscreen"
       />
 
-      <!-- 右上角控制按钮组（cbs=false 时隐藏） -->
-      <div v-show="showControls && currentView !== 'settings'" class="control-buttons">
+      <!-- 右上角控制按钮组（鼠标静止 3s 后自动隐藏） -->
+      <div
+        v-show="currentView !== 'settings'"
+        class="control-buttons"
+        :class="{ 'controls-hidden': !controlsVisible }"
+      >
         <button class="control-btn" @click="toggleFontWeight" title="切换字体粗细">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
@@ -425,6 +456,13 @@ body.fullscreen-mode .sidebar-toggle {
   display: flex;
   gap: 8px;
   z-index: 100;
+  transition: opacity 0.3s ease;
+}
+
+/* 鼠标静止后自动隐藏，隐藏时不可点击 */
+.control-buttons.controls-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .is-fullscreen .control-buttons {
