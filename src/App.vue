@@ -7,7 +7,7 @@ import Timer from './components/Timer.vue'
 import Stopwatch from './components/Stopwatch.vue'
 import Settings from './components/Settings.vue'
 import AlarmAlert from './components/AlarmAlert.vue'
-import { themeMode, getCurrentTheme, fontSize, fontWeight } from './stores/settings'
+import { themeMode, getCurrentTheme, fontSize, fontWeight, sidebarCollapsed, isFullscreen, showControls } from './stores/settings'
 import { alarms } from './stores/alarms'
 import { useAudio } from './composables/useAudio'
 
@@ -22,9 +22,7 @@ function getViewFromPath() {
 }
 
 const currentView = ref(getViewFromPath())
-const sidebarCollapsed = ref(false)
 const mainContentRef = ref(null)
-const isFullscreen = ref(false)
 
 // 闹钟提醒状态
 const showAlarmAlert = ref(false)
@@ -40,11 +38,12 @@ watch(themeMode, () => {
   applyTheme()
 })
 
-// 监听视图变化，更新 URL 路径
+// 监听视图变化，更新 URL 路径（保留 URL 中的配置参数）
 watch(currentView, (newView) => {
   const newPath = newView === 'clock' ? '/' : `/${newView}`
-  if (window.location.pathname !== newPath) {
-    window.history.pushState({}, '', newPath)
+  const target = `${newPath}${window.location.search}`
+  if (window.location.pathname + window.location.search !== target) {
+    window.history.pushState({}, '', target)
   }
 })
 
@@ -103,8 +102,12 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 
 // 进入/退出模拟全屏时的处理
+let sidebarCollapsedBeforeFullscreen = null
+
 function enterSimulatedFullscreen() {
   isFullscreen.value = true
+  // 记录进入全屏前的折叠状态，退出时恢复，避免把全屏行为持久化
+  sidebarCollapsedBeforeFullscreen = sidebarCollapsed.value
   sidebarCollapsed.value = true
   document.body.classList.add('fullscreen-mode')
   // 滚动到顶部，隐藏 Safari 地址栏
@@ -114,6 +117,10 @@ function enterSimulatedFullscreen() {
 function exitSimulatedFullscreen() {
   isFullscreen.value = false
   document.body.classList.remove('fullscreen-mode')
+  if (sidebarCollapsedBeforeFullscreen !== null) {
+    sidebarCollapsed.value = sidebarCollapsedBeforeFullscreen
+    sidebarCollapsedBeforeFullscreen = null
+  }
 }
 
 // 全屏功能 - 兼容 iPad
@@ -188,11 +195,26 @@ function toggleFontWeight() {
   fontWeight.value = fontWeight.value === 100 ? 250 : 100
 }
 
+// 侧边栏折叠切换（状态持久化在 settings store 中）
+function toggleSidebar() {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+function setSidebarCollapsed(value) {
+  sidebarCollapsed.value = value
+}
+
 // 自动主题检查
 let themeCheckInterval = null
 
 onMounted(() => {
   applyTheme()
+
+  // URL 指定 fullscreen=true 时尝试进入全屏；浏览器要求用户手势，失败时降级为模拟全屏
+  if (isFullscreen.value) {
+    toggleFullscreen()
+  }
+
   alarmCheckInterval = setInterval(checkAlarms, 1000)
   themeCheckInterval = setInterval(() => {
     if (themeMode.value === 'auto') {
@@ -225,6 +247,11 @@ function handleKeydown(e) {
   }
   if (e.key === 'Escape' && showAlarmAlert.value) {
     dismissAlarm()
+    return
+  }
+  // iOS 模拟全屏不支持浏览器原生 Esc 退出，这里手动处理
+  if (e.key === 'Escape' && document.body.classList.contains('fullscreen-mode')) {
+    exitSimulatedFullscreen()
   }
 }
 </script>
@@ -233,7 +260,8 @@ function handleKeydown(e) {
   <div class="app" :data-theme="currentTheme">
     <Sidebar
       v-model:currentView="currentView"
-      v-model:collapsed="sidebarCollapsed"
+      :collapsed="sidebarCollapsed"
+      @update:collapsed="setSidebarCollapsed"
     />
 
     <main
@@ -248,10 +276,16 @@ function handleKeydown(e) {
       <Alarm v-else-if="currentView === 'alarm'" />
       <Timer v-else-if="currentView === 'timer'" @timer-complete="handleTimerComplete" />
       <Stopwatch v-else-if="currentView === 'stopwatch'" />
-      <Settings v-else-if="currentView === 'settings'" />
+      <Settings
+        v-else-if="currentView === 'settings'"
+        :sidebar-collapsed="sidebarCollapsed"
+        :is-fullscreen="isFullscreen"
+        @toggle-sidebar="toggleSidebar"
+        @toggle-fullscreen="toggleFullscreen"
+      />
 
-      <!-- 右上角控制按钮组 -->
-      <div v-show="currentView !== 'settings'" class="control-buttons">
+      <!-- 右上角控制按钮组（cbs=false 时隐藏） -->
+      <div v-show="showControls && currentView !== 'settings'" class="control-buttons">
         <button class="control-btn" @click="toggleFontWeight" title="切换字体粗细">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>

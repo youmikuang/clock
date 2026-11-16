@@ -1,6 +1,19 @@
 <script setup>
-import { computed } from 'vue'
-import { timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, getCurrentTheme } from '../stores/settings'
+import { computed, ref } from 'vue'
+import { timeFormat, showSeconds, showDate, themeMode, clockColor, fontSize, getCurrentTheme, buildShareUrl } from '../stores/settings'
+
+defineProps({
+  sidebarCollapsed: {
+    type: Boolean,
+    default: false
+  },
+  isFullscreen: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['toggle-sidebar', 'toggle-fullscreen'])
 
 const colors = [
   { value: 'default', label: '默认' },
@@ -45,6 +58,35 @@ function setClockColor(color) {
 
 function setFontSize(size) {
   fontSize.value = parseInt(size)
+}
+
+// 配置链接（含当前所有设置）
+const shareUrl = computed(() => buildShareUrl())
+const copied = ref(false)
+let copyTimer = null
+
+async function copyShareUrl() {
+  const text = shareUrl.value
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      // 兼容非安全上下文（如 http 局域网访问）
+      const input = document.createElement('textarea')
+      input.value = text
+      input.style.position = 'fixed'
+      input.style.opacity = '0'
+      document.body.appendChild(input)
+      input.select()
+      document.execCommand('copy')
+      document.body.removeChild(input)
+    }
+    copied.value = true
+    if (copyTimer) clearTimeout(copyTimer)
+    copyTimer = setTimeout(() => { copied.value = false }, 2000)
+  } catch (error) {
+    console.warn('复制失败:', error)
+  }
 }
 </script>
 
@@ -94,6 +136,24 @@ function setFontSize(size) {
     </div>
 
     <div class="setting-group">
+      <div class="setting-row">
+        <div class="setting-label">折叠侧边栏</div>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="sidebarCollapsed" @change="emit('toggle-sidebar')">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row setting-row-spaced">
+        <div class="setting-label">全屏模式</div>
+        <label class="toggle-switch">
+          <input type="checkbox" :checked="isFullscreen" @change="emit('toggle-fullscreen')">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-hint">全屏时按 F 或 Esc 可退出（支持 iPad 模拟全屏）</div>
+    </div>
+
+    <div class="setting-group">
       <div class="setting-label">时钟颜色</div>
       <div class="color-picker">
         <div
@@ -120,6 +180,24 @@ function setFontSize(size) {
         :value="fontSize"
         @input="setFontSize($event.target.value)"
       >
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-label">配置链接</div>
+      <div class="share-row">
+        <input
+          class="share-input"
+          type="text"
+          :value="shareUrl"
+          readonly
+          @focus="$event.target.select()"
+        >
+        <button class="share-btn" @click="copyShareUrl">{{ copied ? '已复制' : '复制' }}</button>
+      </div>
+      <div class="setting-hint">
+        链接中的参数优先于本地缓存，可通过 URL 直接指定配置，例如
+        ?timeFormat=12&amp;showSeconds=false&amp;themeMode=dark
+      </div>
     </div>
   </div>
 </template>
@@ -174,6 +252,10 @@ function setFontSize(size) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.setting-row + .setting-row-spaced {
+  margin-top: 18px;
 }
 
 .setting-hint {
@@ -290,5 +372,43 @@ function setFontSize(size) {
   border-radius: 50%;
   cursor: pointer;
   border: none;
+}
+
+.share-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.share-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-color);
+  background: var(--sidebar-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  outline: none;
+}
+
+.share-input:focus {
+  border-color: var(--accent-color);
+}
+
+.share-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-color);
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.share-btn:hover {
+  background: var(--sidebar-hover);
 }
 </style>
