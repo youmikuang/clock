@@ -7,6 +7,7 @@ import Timer from './components/Timer.vue'
 import Stopwatch from './components/Stopwatch.vue'
 import Settings from './components/Settings.vue'
 import AlarmAlert from './components/AlarmAlert.vue'
+import ParticleBackground from './components/ParticleBackground.vue'
 import { themeMode, getCurrentTheme, fontSize, fontWeight, sidebarCollapsed, isFullscreen } from './stores/settings'
 import { alarms } from './stores/alarms'
 import { useAudio } from './composables/useAudio'
@@ -299,17 +300,22 @@ function handleKeydown(e) {
         'is-fullscreen': isFullscreen
       }"
     >
-      <Clock v-if="currentView === 'clock'" />
-      <Alarm v-else-if="currentView === 'alarm'" />
-      <Timer v-else-if="currentView === 'timer'" @timer-complete="handleTimerComplete" />
-      <Stopwatch v-else-if="currentView === 'stopwatch'" />
-      <Settings
-        v-else-if="currentView === 'settings'"
-        :sidebar-collapsed="sidebarCollapsed"
-        :is-fullscreen="isFullscreen"
-        @toggle-sidebar="toggleSidebar"
-        @toggle-fullscreen="toggleFullscreen"
-      />
+      <!-- 背景粒子（位于内容下方，不响应鼠标） -->
+      <ParticleBackground />
+
+      <div class="view-layer">
+        <Clock v-if="currentView === 'clock'" />
+        <Alarm v-else-if="currentView === 'alarm'" />
+        <Timer v-else-if="currentView === 'timer'" @timer-complete="handleTimerComplete" />
+        <Stopwatch v-else-if="currentView === 'stopwatch'" />
+        <Settings
+          v-else-if="currentView === 'settings'"
+          :sidebar-collapsed="sidebarCollapsed"
+          :is-fullscreen="isFullscreen"
+          @toggle-sidebar="toggleSidebar"
+          @toggle-fullscreen="toggleFullscreen"
+        />
+      </div>
 
       <!-- 右上角控制按钮组（鼠标静止 3s 后自动隐藏） -->
       <div
@@ -414,6 +420,17 @@ body {
 
 .main-content.sidebar-collapsed {
   margin-left: 0;
+}
+
+/* 内容层：保证位于粒子背景之上 */
+.view-layer {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .main-content.is-fullscreen {
